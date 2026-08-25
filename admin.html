@@ -1,16 +1,77 @@
-<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>翎美数据后台</title><style>
-*{box-sizing:border-box}body{margin:0;background:#f4f7fb;font:14px Arial;color:#17365d}.top{background:#073b78;color:#fff;padding:16px 24px;display:flex;justify-content:space-between}.wrap{padding:18px 24px}.box{background:#fff;border:1px solid #d7e2ee;border-radius:12px;padding:16px;margin-bottom:14px}.login{max-width:430px;margin:60px auto}input,select,button{padding:9px;border:1px solid #bdcad8;border-radius:6px}input{width:100%;margin:6px 0}button{background:#0b62b5;color:#fff;border:0;cursor:pointer;margin:5px}.danger{background:#b3261e}.bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.bar select{min-width:220px}.gridwrap{overflow:auto;margin-top:12px}table{border-collapse:collapse;background:#fff;min-width:800px}th,td{border:1px solid #cbd8e8;padding:8px;min-width:130px;height:34px}th{background:#eaf2fb}th[contenteditable],td[contenteditable]{outline:none}th:focus,td:focus{box-shadow:inset 0 0 0 2px #2382d7;background:#fffdf0}.hint{color:#6f8195}.hidden{display:none}.msg{color:#17834b;margin-left:8px}</style></head><body>
-<header class="top"><strong>翎美数据后台（仅管理员）</strong><button id="logout" class="hidden">退出登录</button></header><main class="wrap"><section id="login" class="box login"><h2>管理员登录</h2><input id="email" type="email" placeholder="邮箱"><input id="password" type="password" placeholder="密码"><button id="signIn">登录</button><button id="signUp">首次使用：创建账号</button><p class="hint">第一次使用先创建账号；完成后请在 Supabase 关闭新用户注册。</p><div id="loginMsg"></div></section>
-<section id="editor" class="hidden"><div class="box"><div class="bar"><select id="section"></select><button id="addSection">新增板块</button><button id="addRow">新增行</button><button id="addCol">新增列</button><button id="delRow" class="danger">删除最后一行</button><button id="delCol" class="danger">删除最后一列</button><button id="save">保存并同步BI</button><span id="msg" class="msg"></span></div><p class="hint">可直接从 Excel 复制整块表格，然后点击左上角单元格按 Ctrl+V。标题和表头都可直接修改。</p><label>板块标题：<input id="title"></label><div class="gridwrap" id="grid"></div></div></section></main>
-<script src="config.js"></script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script>
-const db=supabase.createClient(LINGMEI_CONFIG.url,LINGMEI_CONFIG.key);let sections=[],current=null;const $=id=>document.getElementById(id);
-function show(auth){$('login').classList.toggle('hidden',auth);$('editor').classList.toggle('hidden',!auth);$('logout').classList.toggle('hidden',!auth);if(auth)load()}
-db.auth.getSession().then(({data})=>show(!!data.session));$('signIn').onclick=async()=>{let{error}=await db.auth.signInWithPassword({email:$('email').value,password:$('password').value});$('loginMsg').textContent=error?error.message:'登录成功';if(!error)show(true)};$('signUp').onclick=async()=>{let{error}=await db.auth.signUp({email:$('email').value,password:$('password').value});$('loginMsg').textContent=error?error.message:'账号已创建，请检查邮箱或直接登录'};$('logout').onclick=async()=>{await db.auth.signOut();show(false)};
-async function load(){let{data,error}=await db.from('dashboard_sections').select('*').order('sort_order');if(error){$('msg').textContent=error.message;return}sections=data;$('section').innerHTML=data.map(x=>'<option value="'+x.id+'">'+x.title+'</option>').join('');if(data.length){current=data[0];draw()}}
-function draw(){if(!current)return;$('title').value=current.title;let t=document.createElement('table'),tr=document.createElement('tr');current.columns.forEach(x=>{let th=document.createElement('th');th.contentEditable=true;th.textContent=x;tr.appendChild(th)});t.appendChild(tr);current.rows.forEach(r=>{let tr=document.createElement('tr');current.columns.forEach((_,i)=>{let td=document.createElement('td');td.contentEditable=true;td.textContent=r[i]??'';tr.appendChild(td)});t.appendChild(tr)});$('grid').innerHTML='';$('grid').appendChild(t)}
-$('section').onchange=()=>{current=sections.find(x=>String(x.id)==$('section').value);draw()};$('addRow').onclick=()=>{current.rows.push(current.columns.map(()=>''));draw()};$('addCol').onclick=()=>{current.columns.push('新列');current.rows.forEach(r=>r.push(''));draw()};$('delRow').onclick=()=>{current.rows.pop();draw()};$('delCol').onclick=()=>{current.columns.pop();current.rows.forEach(r=>r.pop());draw()};
-$('grid').addEventListener('paste',e=>{let cell=e.target;if(!/^(TD|TH)$/.test(cell.tagName))return;e.preventDefault();let lines=e.clipboardData.getData('text').replace(/\r/g,'').split('\n').filter((x,i,a)=>x||i<a.length-1).map(x=>x.split('\t')),table=cell.closest('table'),r0=cell.parentElement.rowIndex,c0=cell.cellIndex;lines.forEach((r,ri)=>r.forEach((v,ci)=>{let rr=r0+ri,cc=c0+ci;while(table.rows.length<=rr){let tr=table.insertRow();for(let j=0;j<table.rows[0].cells.length;j++){let td=tr.insertCell();td.contentEditable=true}}while(table.rows[0].cells.length<=cc){for(let j=0;j<table.rows.length;j++){let c=j===0?document.createElement('th'):document.createElement('td');c.contentEditable=true;table.rows[j].appendChild(c)}}table.rows[rr].cells[cc].textContent=v}))});
-function readGrid(){let rows=[...$('grid').querySelectorAll('tr')].map(tr=>[...tr.cells].map(c=>c.textContent.trim()));return{columns:rows.shift()||[],rows}}
-$('save').onclick=async()=>{let g=readGrid(),payload={title:$('title').value.trim(),columns:g.columns,rows:g.rows,updated_at:new Date().toISOString()};let{error}=await db.from('dashboard_sections').update(payload).eq('id',current.id);$('msg').textContent=error?error.message:'已保存，BI已同步';if(!error){Object.assign(current,payload);setTimeout(()=>$('msg').textContent='',3000)}};
-$('addSection').onclick=async()=>{let name=prompt('请输入新板块名称');if(!name)return;let key='custom_'+Date.now();let{error}=await db.from('dashboard_sections').insert({section_key:key,title:name,display_type:'table',columns:['表头1','表头2'],rows:[],sort_order:sections.length*10+100});if(error)$('msg').textContent=error.message;else load()};
-</script></body></html>
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>翎美 BI 数据后台</title>
+  <style>
+    *{box-sizing:border-box}body{margin:0;background:#f4f7fb;color:#17365d;font:14px "Microsoft YaHei",Arial,sans-serif}
+    .top{position:sticky;top:0;z-index:20;background:linear-gradient(135deg,#063871,#0b62b5);color:#fff;padding:14px 22px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 3px 14px #08264d28}
+    .top h1{font-size:19px;margin:0}.top small{opacity:.8;margin-left:10px}.wrap{padding:18px 22px;max-width:1500px;margin:auto}.box{background:#fff;border:1px solid #d7e2ee;border-radius:14px;padding:18px;box-shadow:0 5px 18px #08264d0c}
+    .login{max-width:440px;margin:60px auto}.login h2{margin-top:0}.login input{width:100%;margin:6px 0 10px}
+    input,button{font:inherit;border:1px solid #bdcad8;border-radius:7px;padding:9px 12px}button{background:#0b62b5;color:#fff;border:0;cursor:pointer}button:hover{filter:brightness(.95)}button.secondary{background:#67809c}button.danger{background:#b3261e}.hidden{display:none!important}
+    .layout{display:grid;grid-template-columns:240px minmax(0,1fr);gap:16px}.side{padding:12px}.side-title{font-weight:700;padding:8px 10px}.section-list{display:flex;flex-direction:column;gap:5px}.section-btn{width:100%;text-align:left;background:#eef4fb;color:#24496f;border:1px solid transparent}.section-btn.active{background:#0b62b5;color:#fff}.section-btn .key{display:block;font-size:11px;opacity:.65;margin-top:3px}
+    .editor-head{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.editor-head input{min-width:300px;flex:1;font-size:17px;font-weight:700}.toolbar{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-top:13px}.status{font-weight:700;color:#17834b;margin-left:auto}.hint{color:#6f8195;line-height:1.7;margin:10px 0}.gridwrap{overflow:auto;border:1px solid #cbd8e8;border-radius:9px;max-height:67vh;background:#fff}
+    table{border-collapse:separate;border-spacing:0;min-width:100%;width:max-content}th,td{border-right:1px solid #d6e0ec;border-bottom:1px solid #d6e0ec;padding:8px 10px;min-width:145px;height:38px;white-space:pre-wrap}th{position:sticky;top:0;z-index:2;background:#eaf2fb;font-weight:700}th:first-child,td:first-child{border-left:0}th[contenteditable],td[contenteditable]{outline:none}th:focus,td:focus{box-shadow:inset 0 0 0 2px #2382d7;background:#fffdf0}.selected{background:#fff9d9}
+    .paste-tip{background:#eef8ff;border-left:4px solid #2382d7;border-radius:6px;padding:9px 12px;margin:12px 0}.login-msg{color:#b3261e;margin-top:8px}.public-link{color:#fff;text-decoration:none;border:1px solid #ffffff66;border-radius:7px;padding:7px 10px}
+    @media(max-width:800px){.layout{grid-template-columns:1fr}.section-list{flex-direction:row;overflow:auto}.section-btn{min-width:150px}.wrap{padding:10px}.top small{display:none}.editor-head input{min-width:100%}.status{width:100%;margin:0}}
+  </style>
+</head>
+<body>
+  <header class="top"><div><h1>翎美 BI 数据后台 <small>只有管理员可进入</small></h1></div><div><a class="public-link" href="./" target="_blank">查看公开看板</a> <button id="logout" class="secondary hidden">退出登录</button></div></header>
+  <main class="wrap">
+    <section id="login" class="box login">
+      <h2>管理员登录</h2>
+      <p class="hint">输入管理员邮箱和密码。第一次使用可先创建账号。</p>
+      <input id="email" type="email" placeholder="管理员邮箱">
+      <input id="password" type="password" placeholder="密码（至少6位）">
+      <button id="signIn">登录后台</button><button id="signUp" class="secondary">首次使用：创建账号</button>
+      <div id="loginMsg" class="login-msg"></div>
+    </section>
+    <section id="editor" class="hidden">
+      <div class="layout">
+        <aside class="box side"><div class="side-title">数据板块</div><div id="sectionList" class="section-list"></div><button id="addSection" style="width:100%;margin-top:10px">＋ 新增板块</button></aside>
+        <section class="box">
+          <div class="editor-head"><label for="title"><b>板块标题：</b></label><input id="title" placeholder="板块标题"><span id="status" class="status"></span></div>
+          <div class="paste-tip"><b>一键粘贴：</b>在 Excel 中复制整块表格（包含表头），回到这里点击第一个单元格后按 <b>Ctrl+V</b>。后台会自动扩展行和列。</div>
+          <div class="toolbar">
+            <button id="addRow">＋ 增加一行</button><button id="addCol">＋ 增加一列</button>
+            <button id="delRow" class="secondary">删除最后一行</button><button id="delCol" class="secondary">删除最后一列</button>
+            <button id="clearData" class="danger">清空本板块数据</button><button id="save">保存并同步 BI 看板</button>
+          </div>
+          <p class="hint">表头和数据都可直接点击修改。保存后，公开 BI 看板会自动读取最新数据；已经打开的看板最迟约10秒更新。</p>
+          <div class="gridwrap" id="grid"></div>
+        </section>
+      </div>
+    </section>
+  </main>
+  <script src="config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const db=supabase.createClient(LINGMEI_CONFIG.url,LINGMEI_CONFIG.key),$=id=>document.getElementById(id);
+    let sections=[],current=null,dirty=false;
+    const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+    function authView(ok){$('login').classList.toggle('hidden',ok);$('editor').classList.toggle('hidden',!ok);$('logout').classList.toggle('hidden',!ok);if(ok)loadSections()}
+    db.auth.getSession().then(({data})=>authView(!!data.session));
+    $('signIn').onclick=async()=>{const{error}=await db.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value});$('loginMsg').textContent=error?error.message:'';if(!error)authView(true)};
+    $('signUp').onclick=async()=>{const{error}=await db.auth.signUp({email:$('email').value.trim(),password:$('password').value});$('loginMsg').textContent=error?error.message:'账号已创建。若系统要求验证，请先查看邮箱，然后回来登录。'};
+    $('logout').onclick=async()=>{await db.auth.signOut();authView(false)};
+    function setStatus(text,error=false){$('status').textContent=text;$('status').style.color=error?'#b3261e':'#17834b';if(text)setTimeout(()=>{if($('status').textContent===text)$('status').textContent=''},4000)}
+    async function loadSections(selectId){const{data,error}=await db.from('dashboard_sections').select('*').order('sort_order');if(error){setStatus(error.message,true);return}sections=data||[];current=sections.find(x=>x.id===selectId)||sections[0]||null;drawSections();drawGrid()}
+    function drawSections(){$('sectionList').innerHTML=sections.map(x=>'<button class="section-btn '+(current&&x.id===current.id?'active':'')+'" data-id="'+x.id+'">'+esc(x.title)+'<span class="key">'+esc(x.section_key)+'</span></button>').join('')}
+    $('sectionList').onclick=e=>{const b=e.target.closest('.section-btn');if(!b)return;if(dirty&&!confirm('当前板块有未保存修改，确定切换吗？'))return;current=sections.find(x=>String(x.id)===b.dataset.id);dirty=false;drawSections();drawGrid()};
+    function normalized(){if(!current)return{columns:['表头1'],rows:[['']]};let columns=Array.isArray(current.columns)&&current.columns.length?current.columns:['表头1'];let rows=Array.isArray(current.rows)?current.rows:[];return{columns:[...columns],rows:rows.map(r=>columns.map((_,i)=>r?.[i]??''))}}
+    function drawGrid(){if(!current){$('grid').innerHTML='<p style="padding:20px">暂无板块，请点击“新增板块”。</p>';return}$('title').value=current.title||'';const g=normalized();let html='<table><thead><tr>'+g.columns.map(x=>'<th contenteditable="true">'+esc(x)+'</th>').join('')+'</tr></thead><tbody>';html+=g.rows.map(r=>'<tr>'+r.map(v=>'<td contenteditable="true">'+esc(v)+'</td>').join('')+'</tr>').join('');html+='</tbody></table>';$('grid').innerHTML=html;dirty=false}
+    function table(){return $('grid').querySelector('table')}function mark(){dirty=true;setStatus('有未保存修改')}
+    $('grid').addEventListener('input',mark);$('title').addEventListener('input',mark);
+    function addRow(){const t=table();if(!t)return;const tr=t.tBodies[0].insertRow();for(let i=0;i<t.tHead.rows[0].cells.length;i++){const td=tr.insertCell();td.contentEditable='true'}mark()}
+    function addCol(){const t=table();if(!t)return;const th=document.createElement('th');th.contentEditable='true';th.textContent='新表头';t.tHead.rows[0].appendChild(th);[...t.tBodies[0].rows].forEach(r=>{const td=r.insertCell();td.contentEditable='true'});mark()}
+    $('addRow').onclick=addRow;$('addCol').onclick=addCol;$('delRow').onclick=()=>{const t=table();if(t&&t.tBodies[0].rows.length){t.tBodies[0].deleteRow(-1);mark()}};$('delCol').onclick=()=>{const t=table();if(!t||t.tHead.rows[0].cells.length<2)return;[...t.rows].forEach(r=>r.deleteCell(-1));mark()};
+    $('clearData').onclick=()=>{if(!confirm('确定清空当前板块的全部数据行吗？表头会保留。'))return;const t=table();if(t)t.tBodies[0].innerHTML='';mark()};
+    $('grid').addEventListener('paste',e=>{const cell=e.target.closest('td,th');if(!cell)return;e.preventDefault();const raw=e.clipboardData.getData('text/plain').replace(/\r/g,'').replace(/\n$/,'');if(!raw)return;const block=raw.split('\n').map(line=>line.split('\t')),t=table();let r0=cell.parentElement.rowIndex,c0=cell.cellIndex;const needCols=c0+Math.max(...block.map(r=>r.length));while(t.tHead.rows[0].cells.length<needCols)addCol();const needRows=Math.max(0,r0+block.length-1);while(t.tBodies[0].rows.length<needRows)addRow();block.forEach((r,ri)=>r.forEach((v,ci)=>{t.rows[r0+ri].cells[c0+ci].textContent=v}));mark();setStatus('已粘贴 '+block.length+' 行 × '+Math.max(...block.map(r=>r.length))+' 列，请点击保存')});
+    function readGrid(){const t=table();if(!t)return{columns:[],rows:[]};return{columns:[...t.tHead.rows[0].cells].map(c=>c.textContent.trim()),rows:[...t.tBodies[0].rows].map(r=>[...r.cells].map(c=>c.textContent.trim()))}}
+    $('save').onclick=async()=>{if(!current)return;const g=readGrid(),payload={title:$('title').value.trim()||current.title,columns:g.columns,rows:g.rows,updated_at:new Date().toISOString()};setStatus('正在保存…');const{error}=await db.from('dashboard_sections').update(payload).eq('id',current.id);if(error){setStatus(error.message,true);return}Object.assign(current,payload);dirty=false;drawSections();setStatus('保存成功，BI 看板正在同步')};
+    $('addSection').onclick=async()=>{const name=prompt('请输入新板块名称');if(!name)return;const payload={section_key:'custom_'+Date.now(),title:name,display_type:'table',columns:['表头1','表头2'],rows:[['','']],sort_order:(sections.at(-1)?.sort_order||0)+10};const{data,error}=await db.from('dashboard_sections').insert(payload).select().single();if(error)setStatus(error.message,true);else loadSections(data.id)};
+    window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue=''}});
+  </script>
+</body></html>
