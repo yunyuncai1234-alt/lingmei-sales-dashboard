@@ -47,9 +47,9 @@ body{background:var(--bg);color:var(--txt);font-family:"微软雅黑",-apple-sys
   .head{display:block;padding-bottom:8px;margin-bottom:10px}.head h1{font-size:18px;line-height:1.35}.head .meta{text-align:left;margin-top:6px;font-size:10px}
   .row,.row.r2{display:block;margin-bottom:10px}.panel,.r2>.panel{width:100%!important;min-width:0;margin-bottom:10px;padding:11px 10px;border-radius:9px}
   .kpis{grid-template-columns:repeat(2,1fr)!important;gap:8px}.kpi{padding:9px 10px}.kpi-val{font-size:19px}.kpi-label{font-size:11px}.kpi-sub{font-size:10px}
-  .tbl{font-size:11px;min-width:560px}.panel>div[style*="overflow:auto"]{overflow-x:auto}
+  .tbl{font-size:10px;min-width:0!important;width:100%;table-layout:fixed;word-break:break-word}.tbl th,.tbl td{padding:4px 2px;line-height:1.25;white-space:normal;overflow-wrap:anywhere}.tbl th{font-size:9px}.panel>div[style*="overflow:auto"]{overflow-x:visible;max-height:none}
   .panel h2{font-size:13px;line-height:1.45}.panel h2 span{font-size:10px}.pbtn{padding:6px 10px;margin-bottom:5px}.data-import{right:10px;top:10px;padding:8px 11px}
-  #geoMap,#geoMap2{height:300px!important}.flow-split{display:block!important}.flow-split>div{margin-bottom:10px}
+  #geoMap,#geoMap2{height:300px!important}.flow-split{display:block!important}.flow-split>div{margin-bottom:10px}.flow-split .tbl{font-size:9px}.flow-split .tbl th,.flow-split .tbl td{padding:3px 1px}.annual-ads .tbl{font-size:9px}.annual-ads .tbl th,.annual-ads .tbl td{padding:4px 1px}
 }
 .flow-split{display:grid;grid-template-columns:1fr 1fr;gap:12px}.flow-split .tbl{min-width:0}.flow-split h3{font-size:13px;color:var(--blue);border-left:4px solid var(--red);padding-left:7px;margin:0 0 8px}
 </style></head>
@@ -368,24 +368,137 @@ function swPlat(p){
   if(wrap){var subs=wrap.querySelectorAll('div');if(subs[0])subs[0].remove();}
 })();
 </script>
-<style>.data-import,#paste-admin{display:none!important}</style>
 <script>
 (function(){
-var API='https://hafzjgbotovxqtcepnod.supabase.co/rest/v1/dashboard_sections?select=*&order=sort_order';
-var KEY='sb_publishable_gXWhlDp6sWkNOeSOtwnhAg_dS9_Xrh0';
-function txt(s){return String(s==null?'':s)}
-function makeTable(t,cols,rows){if(!t)return;t.innerHTML='<thead><tr>'+cols.map(function(x){return'<th>'+txt(x)+'</th>'}).join('')+'</tr></thead><tbody>'+rows.map(function(r){return'<tr>'+cols.map(function(_,i){return'<td>'+txt(r[i])+'</td>'}).join('')+'</tr>'}).join('')+'</tbody>';}
-function findPanel(words){var ps=[].slice.call(document.querySelectorAll('.panel'));return ps.find(function(p){var s=(p.querySelector('h2')||p).textContent||'';return words.some(function(w){return s.indexOf(w)>=0})});}
-function render(list){var by={};list.forEach(function(x){by[x.section_key]=x});
- var s=by.summary,k=document.querySelectorAll('.kpis>.kpi');if(s){s.rows.forEach(function(r,i){if(k[i]){var l=k[i].querySelector('.kpi-label'),v=k[i].querySelector('.kpi-val'),sub=k[i].querySelector('.kpi-sub');if(l)l.textContent=r[0];if(v)v.textContent=r[1];if(sub)sub.textContent='';}})}
- var p=by.platform,pp=findPanel(['平台诊断']);if(p&&pp)makeTable(pp.querySelector('table'),p.columns,p.rows);
- var m=by.monthly,mp=findPanel(['分月数据']);if(m&&mp){var platformIndex=m.columns.indexOf('平台');mp.querySelectorAll('.mtab').forEach(function(tab){var name=(tab.id||'').replace('mtab-','');var rows=m.rows.filter(function(r){return platformIndex<0||r[platformIndex]===name});var cols=m.columns.slice(),out=rows.map(function(r){return r.slice()});if(platformIndex>=0){cols.splice(platformIndex,1);out=out.map(function(r){r=r.slice();r.splice(platformIndex,1);return r})}makeTable(tab.querySelector('table'),cols,out)});}
- [['f_flow','F系列'],['l_flow','L系列']].forEach(function(a){var d=by[a[0]];if(!d)return;var hs=[].slice.call(document.querySelectorAll('.flow-split h3'));var h=hs.find(function(x){return(x.textContent||'').indexOf(a[1])>=0});if(h)makeTable(h.parentElement.querySelector('table'),d.columns,d.rows)});
- [['ads_overview',['2026年投流情况总览']],['ads_month',['当月投流情况']],['ads_platform',['各平台投流明细','平台投流明细']],['region',['地区销售数据','地域热力图']]].forEach(function(a){var d=by[a[0]],panel=findPanel(a[1]);if(d&&panel)makeTable(panel.querySelector('table'),d.columns,d.rows)});
- document.querySelectorAll('.data-import,#paste-admin').forEach(function(x){x.remove()});document.querySelectorAll('button').forEach(function(x){if((x.textContent||'').indexOf('数据后台')>=0)x.remove()});
-}
-function load(){fetch(API,{headers:{apikey:KEY,Authorization:'Bearer '+KEY},cache:'no-store'}).then(function(r){return r.json()}).then(render).catch(function(e){console.error(e)})}
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){setTimeout(load,300)});else setTimeout(load,300);setInterval(load,60000);
+  function clean(){
+    var meta=document.querySelector('.head .meta');if(meta)meta.innerHTML='';
+    var wrap=document.querySelector('.head>div:first-child');if(wrap){var ds=wrap.querySelectorAll('div');if(ds[0])ds[0].remove();}
+    var all=[].slice.call(document.querySelectorAll('.kpi'));
+    all.forEach(function(x){var v=x.querySelector('.kpi-val');if(v)v.textContent=v.textContent.replace(/万打|万箱|万/g,'');});
+    if(all[4])all[4].remove();
+    var cards=[].slice.call(document.querySelectorAll('.head~.row:first-of-type .kpi'));
+    var labels=['年度投流总花费','投流成交打数','单筒投流成本','投流ROI'];
+    var vals=['--','--','--','--'];
+    cards.slice(-4).forEach(function(c,i){var l=c.querySelector('.kpi-label'),v=c.querySelector('.kpi-val'),s=c.querySelector('.kpi-sub');if(l)l.textContent=labels[i];if(v)v.textContent=vals[i];if(s)s.remove();});
+    var panels=[].slice.call(document.querySelectorAll('.panel'));
+    var eff=panels.find(function(p){return p.querySelector('.annual-ads')||p.querySelector('.flow-eff-table')||((p.innerText||'').indexOf('ROI')>=0&&p.querySelectorAll('.kpi').length>=4);});
+    if(eff){var h=eff.querySelector('h2');if(h){h.childNodes[0].textContent='2026年投流情况总览';if(h.querySelector('span'))h.querySelector('span').remove();}
+      eff.querySelectorAll('.kpi-sub,.note,.flow-eff-table').forEach(function(x){x.remove();});
+      var a=eff.querySelector('.annual-ads');if(a){a.querySelectorAll('.eff-month').forEach(function(x){x.textContent='';x.contentEditable='true';});if(!a.querySelector('.add-month')){var b=document.createElement('button');b.className='pbtn add-month';b.textContent='新增月份';b.onclick=function(){var tb=a.querySelector('tbody'),tr=tb.querySelector('tr').cloneNode(true);tr.querySelectorAll('td').forEach(function(td){td.textContent='';td.contentEditable='true';});tb.appendChild(tr);};a.appendChild(b);}}
+      var k=eff.querySelector('.kpis');if(k&&!eff.querySelector('.month-editor')){var ed=document.createElement('div');ed.className='month-editor';ed.innerHTML='当月投流月份：<input class="custom-month" value="" placeholder="手动填写月份">';k.insertAdjacentElement('beforebegin',ed);}
+    }
+    panels.forEach(function(p){var text=p.innerText||'';if(text.indexOf('热力图')>=0||text.indexOf('投流')>=0)p.querySelectorAll('.note').forEach(function(n){n.remove();});});
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',clean);else clean();
 })();
+</script>
+<script>
+(function(){
+  function apply(){
+    var ks=document.querySelector('.kpis');if(!ks)return;
+    var cards=[].slice.call(ks.querySelectorAll(':scope > .kpi'));
+    var labels=['年累计销售额（万元）','销售数量（打）','投流销售打数（打）','单筒成本（打/元）'];
+    cards.slice(3).forEach(function(c){c.remove();});
+    var kept=[].slice.call(ks.querySelectorAll(':scope > .kpi'));
+    kept.forEach(function(c,i){var l=c.querySelector('.kpi-label'),s=c.querySelector('.kpi-sub');if(l)l.textContent=labels[i];if(s)s.remove();});
+    if(kept.length<4){var c=document.createElement('div');c.className='kpi';c.innerHTML='<div class="kpi-label">单筒成本（打/元）</div><div class="kpi-val" style="color:#e60012">--</div>';ks.appendChild(c);}
+    document.querySelectorAll('.head .meta,.head .date-placeholder,.head .date-editor').forEach(function(x){x.remove();});
+    document.querySelectorAll('.note').forEach(function(x){var t=x.textContent||'';if(/截止|成交总打数|394万|394/.test(t))x.remove();});
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',apply);else apply();
+})();
+</script>
+<script>
+(function(){
+  var k=document.querySelector('.kpis');if(!k)return;
+  var c=k.querySelectorAll(':scope > .kpi');
+  if(c[2]&&c[2].querySelector('.kpi-label'))c[2].querySelector('.kpi-label').textContent='年度目标完成率';
+  if(c[3]&&c[3].querySelector('.kpi-label'))c[3].querySelector('.kpi-label').textContent='去年同步变化';
+})();
+</script>
+<style>
+.core-ads{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:10px 0 12px}.core-ads .kpi{border-top-color:#003688}.core-ads .kpi-val{color:#e60012}
+@media(max-width:768px){.core-ads{grid-template-columns:repeat(2,1fr);gap:8px}.core-ads .kpi{padding:8px}}
+</style>
+<script>
+(function(){
+  function apply(){
+    var title=document.querySelector('.head h1');if(title)title.innerHTML='翎美2026年电商销售一览表';
+    var k=document.querySelector('.kpis');if(k){var c=k.querySelectorAll(':scope > .kpi');if(c[2]&&c[2].querySelector('.kpi-label'))c[2].querySelector('.kpi-label').textContent='年度目标完成率';if(c[3]&&c[3].querySelector('.kpi-label'))c[3].querySelector('.kpi-label').textContent='去年同步变化';}
+    document.querySelectorAll('th').forEach(function(th){var t=th.textContent||'';if(t.indexOf('销售打数')>=0&&!/（打）/.test(t))th.textContent=t.replace('销售打数','销售打数（打）');if(t.indexOf('销售金额')>=0&&!/（万元）/.test(t))th.textContent=th.textContent.replace('销售金额','销售金额（万元）');});
+    var panels=[].slice.call(document.querySelectorAll('.panel'));var eff=panels.find(function(p){return p.querySelector('.annual-ads')||p.querySelector('.flow-eff-table');});
+    if(eff&&!eff.querySelector('.core-ads')){var box=document.createElement('div');box.className='core-ads';['投流总费用（元）','投流总成交打数（打）','投流带来销售金额（元）','投流单打成本（元/筒）'].forEach(function(s){var c=document.createElement('div');c.className='kpi';c.innerHTML='<div class="kpi-label">'+s+'</div><div class="kpi-val">--</div>';box.appendChild(c);});var a=eff.querySelector('.annual-ads');if(a)a.insertAdjacentElement('beforebegin',box);else eff.insertBefore(box,eff.firstChild);}
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',apply);else apply();
+})();
+</script>
+<script>
+(function(){var k=document.querySelector('.kpis');if(!k)return;var c=k.querySelectorAll(':scope > .kpi');if(c[3]&&c[3].querySelector('.kpi-label'))c[3].querySelector('.kpi-label').textContent='去年同比变化';})();
+</script>
+<script>
+(function(){
+  var b=document.querySelector('.data-import input');if(!b)return;
+  function csvLine(s){var a=[],q=false,v='';for(var i=0;i<s.length;i++){var c=s[i];if(c==='"'){if(q&&s[i+1]==='"'){v+='"';i++;}else q=!q;}else if(c===','&&!q){a.push(v.trim());v='';}else v+=c;}a.push(v.trim());return a;}
+  b.onchange=function(){var f=b.files[0];if(!f)return;var r=new FileReader();r.onload=function(){
+    var raw=r.result.replace(/^\uFEFF/,'').trim().split(/\r?\n/), head=csvLine(raw.shift()||''), rows=raw.map(csvLine), data=rows.map(function(x){var o={};head.forEach(function(h,i){o[h]=x[i]||'';});return o;});
+    var map={};data.forEach(function(x){map[x['板块']+'|'+x['平台']+'|'+x['月份']+'|'+x['指标']]=x['数值'];});
+    var k=document.querySelectorAll('.kpis>.kpi'), keys=['年累计销售额（万元）','销售数量（打）','年度目标完成率','去年同比变化'];
+    k.forEach(function(c,i){var v=c.querySelector('.kpi-val'), val=map['汇总数据|全平台||'+keys[i]];if(v&&val!==undefined&&val!=='')v.textContent=val;});
+    localStorage.setItem('lingmeiMasterCsv',r.result);var t=document.querySelector('.import-tip');if(t){t.textContent='统一总表已读取，共 '+data.length+' 条数据；汇总指标已更新';t.style.display='block';setTimeout(function(){t.style.display='none'},5000);}
+  };r.readAsText(f,'utf-8');};
+})();
+</script>
+<script>
+(function(){
+  var input=document.querySelector('.data-import input'); if(!input)return;
+  input.accept='.xlsx,.xls,.csv';
+  var sc=document.createElement('script'); sc.src='https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js'; document.head.appendChild(sc);
+  var old=input.onchange;
+  input.onchange=function(){
+    var f=input.files[0]; if(!f)return;
+    if(/\.xlsx?$/i.test(f.name)){
+      var rd=new FileReader(); rd.onload=function(e){
+        if(!window.XLSX){alert('Excel解析组件加载失败，请联网后重试，或先另存为CSV。');return;}
+        var wb=XLSX.read(e.target.result,{type:'array'}), all=[];
+        wb.SheetNames.forEach(function(n){
+          var a=XLSX.utils.sheet_to_json(wb.Sheets[n],{defval:''});
+          a.forEach(function(x){x['板块']=x['板块']||n;all.push(x);});
+        });
+        localStorage.setItem('lingmeiMasterWorkbook',JSON.stringify(all));
+        var t=document.querySelector('.import-tip');if(t){t.textContent='Excel已导入：'+wb.SheetNames.length+'个Sheet，共'+all.length+'条数据';t.style.display='block';setTimeout(function(){t.style.display='none'},5000);}
+        var csv=['板块,平台,月份,型号,省份,指标,数值'];all.forEach(function(x){csv.push([x['板块'],x['平台'],x['月份'],x['型号'],x['省份'],x['指标'],x['数值']].map(function(v){return '"'+String(v||'').replace(/"/g,'""')+'"';}).join(','));});
+        var blob=new Blob([csv.join('\n')],{type:'text/csv;charset=utf-8'});var url=URL.createObjectURL(blob);var a=document.createElement('a');a.href=url;a.download='导入数据.csv';a.textContent='已读取Excel';
+      }; rd.readAsArrayBuffer(f);
+    }else if(old) old.call(input); 
+  };
+})();
+</script>
+<script>(function(){var k=document.querySelector('.kpis');if(!k)return;var c=k.querySelectorAll(':scope > .kpi'),a=['\u5e74\u7d2f\u8ba1\u9500\u552e\u989d\uff08\u4e07\u5143\uff09','\u9500\u552e\u6570\u91cf\uff08\u6253\uff09','\u5e74\u5ea6\u76ee\u6807\u5b8c\u6210\u7387','\u53bb\u5e74\u540c\u6bd4\u53d8\u5316'];for(var i=0;i<4&&i<c.length;i++){var l=c[i].querySelector('.kpi-label');if(l)l.textContent=a[i];var s=c[i].querySelector('.kpi-sub');if(s)s.textContent='';}})();</script>
+<style>
+#paste-admin{position:fixed;right:18px;top:70px;z-index:9999;background:#fff;border:1px solid #d8e1ef;border-radius:12px;box-shadow:0 8px 30px #08264d22;padding:14px;width:min(760px,calc(100vw - 36px));display:none;color:#16345b}
+#paste-admin h3{margin:0 0 8px;font-size:16px}#paste-admin textarea{width:100%;height:220px;box-sizing:border-box;border:1px solid #cbd8e8;border-radius:8px;padding:9px;font:13px Consolas,monospace}#paste-admin button{margin:8px 6px 0 0;border:0;border-radius:7px;padding:8px 14px;background:#0b62b5;color:#fff;cursor:pointer}#paste-admin .muted{font-size:12px;color:#7488a3}
+</style>
+<div id="paste-admin"><h3>&#25968;&#25454;&#21518;&#21488;&#65288;&#25972;&#22359;&#31896;&#36148;&#65289;</h3><div class="muted">&#20174;Excel&#20013;&#22797;&#21046;&#25972;&#20010;&#34920;&#26684;&#65292;&#30452;&#25509;&#31896;&#36148;&#21040;&#19979;&#26041;&#65292;&#27599;&#34892;&#19968;&#26465;&#25968;&#25454;&#65292;&#21015;&#20043;&#38388;&#29992;Tab&#20998;&#38548;&#12290;</div><textarea id="paste-box" placeholder="&#20363;&#22914;&#65306;&#26495;&#22359;&#9;&#24179;&#21488;&#9;&#26376;&#20221;&#9;&#25351;&#26631;&#9;&#25968;&#20540;"></textarea><br><button id="paste-save">&#20445;&#23384;&#24182;&#26356;&#26032;BI</button><button id="paste-close">&#20851;&#38381;</button><span id="paste-msg" class="muted"></span></div>
+<script>
+(function(){
+ var admin=document.getElementById('paste-admin'), box=document.getElementById('paste-box'), msg=document.getElementById('paste-msg');
+ var btn=document.createElement('button');btn.textContent='数据后台';btn.style.cssText='position:fixed;right:18px;top:18px;z-index:9998;border:0;border-radius:7px;padding:8px 13px;background:#0b62b5;color:#fff;cursor:pointer';document.body.appendChild(btn);
+ btn.onclick=function(){admin.style.display='block'};document.getElementById('paste-close').onclick=function(){admin.style.display='none'};
+ function update(rows){var head=rows[0]||[], ix={};head.forEach(function(x,i){ix[x.trim()]=i});var k=document.querySelectorAll('.kpis>.kpi'), names=['年累计销售额（万元）','销售数量（打）','年度目标完成率','去年同比变化'];names.forEach(function(n,i){var row=rows.slice(1).find(function(r){return (r[ix['指标']]||'').trim()===n});if(row&&k[i]&&k[i].querySelector('.kpi-val'))k[i].querySelector('.kpi-val').textContent=(row[ix['数值']]||'').trim()});}
+ document.getElementById('paste-save').onclick=function(){var text=box.value.trim();if(!text){msg.textContent='请先粘贴数据';return}var rows=text.split(/\r?\n/).map(function(x){return x.split('\t')});if(rows.length<2){msg.textContent='至少需要表头和一行数据';return}localStorage.setItem('lingmeiPastedData',JSON.stringify(rows));update(rows);msg.textContent='已保存并更新BI';};
+})();
+</script>
+<script>
+(function(){var p=document.getElementById('paste-admin'),b=document.getElementById('paste-box');if(!p||!b)return;var sections=[['汇总数据','指标\t数值\n年累计销售额（万元）\t\n销售数量（打）\t\n年度目标完成率\t\n去年同比变化\t'],['平台诊断','平台\t销售打数（打）\t年度目标完成率\t销售金额（万元）\t总退款率\t同比2025年\n天猫\t\t\t\t\t'],['分月数据','平台\t月份\t销售打数（打）\t当月目标完成率\t销售金额（万元）\t同比上月\n天猫\t1月\t\t\t\t'],['F系列地域流向','型号\t省份\t成交打数（打）\nF1\t安徽\t'],['L系列地域流向','型号\t省份\t成交打数（打）\nL1\t安徽\t'],['2026年投流总览','月份\t投流总费用（元）\t投流总成交打数（打）\t投流带来销售金额（元）\t投流单打成本（元/筒）\n1月\t\t\t\t'],['当月投流情况','月份\t投流花费（元）\t投流成交打数（打）\t投流销售金额（元）\n\t\t\t'],['平台投流明细','平台\t月份\t型号\t投流费用（元）\t成交打数（打）\t销售金额（元）\n天猫\t1月\tF1\t\t\t']];var old=p.innerHTML;p.innerHTML='<h3>数据后台（按板块粘贴）</h3><div class="muted">请选择板块，再从Excel复制对应板块的整块内容粘贴。</div><select id="section-select"></select><textarea id="paste-box"></textarea><br><button id="paste-save">保存并更新BI</button><button id="paste-close">关闭</button><span id="paste-msg" class="muted"></span>';var s=document.getElementById('section-select'),msg=document.getElementById('paste-msg');sections.forEach(function(x,i){var o=document.createElement('option');o.value=i;o.textContent=x[0];s.appendChild(o)});function show(){b.value=sections[+s.value][1]}s.onchange=show;show();document.getElementById('paste-close').onclick=function(){p.style.display='none'};document.getElementById('paste-save').onclick=function(){var key='lingmeiSection_'+sections[+s.value][0];localStorage.setItem(key,b.value);if(+s.value===0){var rows=b.value.trim().split(/\r?\n/).map(function(x){return x.split('\t')}),h=rows[0]||[],k=document.querySelectorAll('.kpis>.kpi');rows.slice(1).forEach(function(r){var n=r[0],v=r[1],i=['年累计销售额（万元）','销售数量（打）','年度目标完成率','去年同比变化'].indexOf(n);if(i>=0&&k[i])k[i].querySelector('.kpi-val').textContent=v||''})}msg.textContent='已保存：'+sections[+s.value][0]+'；BI已更新';};})();
+</script>
+<script>(function(){function s(){try{var a=JSON.parse(localStorage.getItem('lingmeiAdminData')||'{}')['汇总数据'];if(!a||!a.length)return;var k=document.querySelectorAll('.kpis>.kpi');a.slice(1).forEach(function(r){var i=['年累计销售额（万元）','销售数量（打）','年度目标完成率','去年同比变化'].indexOf((r[0]||'').trim());if(i>=0&&k[i]&&k[i].querySelector('.kpi-val'))k[i].querySelector('.kpi-val').textContent=(r[1]||'').trim();});}catch(e){}}s();window.addEventListener('storage',s);setInterval(s,1000);})();</script>
+<script>(function(){document.querySelectorAll('.data-import,#paste-admin').forEach(function(x){x.remove()});document.querySelectorAll('button').forEach(function(x){if((x.textContent||'').indexOf('数据后台')>=0)x.remove()});})();</script>
+<style>.data-import,#paste-admin{display:none!important}</style>
+<script>
+(function(){var API='https://hafzjgbotovxqtcepnod.supabase.co/rest/v1/dashboard_sections?select=*&order=sort_order',KEY='sb_publishable_gXWhlDp6sWkNOeSOtwnhAg_dS9_Xrh0';
+function mk(t,c,rs){if(!t)return;t.innerHTML='<thead><tr>'+c.map(function(x){return'<th>'+String(x||'')+'</th>'}).join('')+'</tr></thead><tbody>'+rs.map(function(r){return'<tr>'+c.map(function(_,i){return'<td>'+String(r[i]||'')+'</td>'}).join('')+'</tr>'}).join('')+'</tbody>'}
+function panel(words){return[].slice.call(document.querySelectorAll('.panel')).find(function(p){var s=(p.querySelector('h2')||p).textContent||'';return words.some(function(w){return s.indexOf(w)>=0})})}
+function draw(a){var h=document.querySelector('.head h1');if(h)h.textContent='\u7fce\u7f8e2026\u5e74\u7535\u5546\u9500\u552e\u4e00\u89c8\u8868';var d={};a.forEach(function(x){d[x.section_key]=x});var k=document.querySelectorAll('.kpis>.kpi'),s=d.summary;if(s)s.rows.forEach(function(r,i){if(k[i]){var l=k[i].querySelector('.kpi-label'),v=k[i].querySelector('.kpi-val'),q=k[i].querySelector('.kpi-sub');if(l)l.textContent=r[0];if(v)v.textContent=r[1];if(q)q.textContent=''}});var x,p;x=d.platform;p=panel(['\u5e73\u53f0\u8bca\u65ad']);if(x&&p)mk(p.querySelector('table'),x.columns,x.rows);x=d.monthly;p=panel(['\u5206\u6708\u6570\u636e']);if(x&&p){p.querySelectorAll('.mtab').forEach(function(t){var n=(t.id||'').replace('mtab-',''),pi=x.columns.indexOf('\u5e73\u53f0'),c=x.columns.slice(),rs=x.rows.filter(function(r){return pi<0||r[pi]===n}).map(function(r){return r.slice()});if(pi>=0){c.splice(pi,1);rs.forEach(function(r){r.splice(pi,1)})}mk(t.querySelector('table'),c,rs)})} [['f_flow','F \u7cfb\u5217'],['l_flow','L \u7cfb\u5217']].forEach(function(z){x=d[z[0]];if(!x)return;var hs=[].slice.call(document.querySelectorAll('.flow-split h3')),hh=hs.find(function(v){return(v.textContent||'').indexOf(z[1])>=0});if(hh)mk(hh.parentElement.querySelector('table'),x.columns,x.rows)});[['ads_overview',['2026\u5e74\u6295\u6d41\u60c5\u51b5\u603b\u89c8']],['ads_month',['\u5f53\u6708\u6295\u6d41\u60c5\u51b5']],['ads_platform',['\u6295\u6d41\u660e\u7ec6']],['region',['\u9500\u552e\u70ed\u529b\u56fe']]].forEach(function(z){x=d[z[0]];p=panel(z[1]);if(x&&p)mk(p.querySelector('table'),x.columns,x.rows)});document.querySelectorAll('.data-import,#paste-admin').forEach(function(e){e.remove()});document.querySelectorAll('button').forEach(function(e){var t=e.textContent||'';if(t.indexOf('\u6570\u636e\u540e\u53f0')>=0||t.indexOf('\u5bfc\u5165\u6570\u636e')>=0)e.remove()})}
+function load(){fetch(API,{headers:{apikey:KEY,Authorization:'Bearer '+KEY},cache:'no-store'}).then(function(r){return r.json()}).then(draw).catch(function(e){console.error(e)})}setTimeout(load,500);setInterval(load,60000)})();
 </script>
 </body></html>
