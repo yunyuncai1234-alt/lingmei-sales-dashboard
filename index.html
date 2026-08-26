@@ -527,4 +527,25 @@ function finalPolish(){
 }
 setTimeout(finalPolish,50);setTimeout(finalPolish,1200);
 </script>
+<script>
+(function(){
+  var API2='https://hafzjgbotovxqtcepnod.supabase.co/rest/v1/dashboard_sections?select=*&order=sort_order';
+  var KEY2='sb_publishable_gXWhlDp6sWkNOeSOtwnhAg_dS9_Xrh0';
+  function sectionPanel(text){return Array.from(document.querySelectorAll('.panel')).find(function(p){return ((p.querySelector('h2,h3')||p).textContent||'').indexOf(text)>=0})}
+  function tableFill(table,cols,rows){if(!table||!rows||!rows.length)return;table.innerHTML='<thead><tr>'+cols.map(function(c){return '<th>'+String(c||'')+'</th>'}).join('')+'</tr></thead><tbody>'+rows.map(function(r){return '<tr>'+cols.map(function(_,i){return '<td>'+String(r[i]||'')+'</td>'}).join('')+'</tr>'}).join('')+'</tbody>'}
+  function heading(panel,title){if(!panel||!title)return;var h=panel.querySelector('h2,h3');if(!h)return;var sp=h.querySelector('span');if(sp){Array.from(h.childNodes).filter(function(n){return n!==sp}).forEach(function(n){n.remove()});h.insertBefore(document.createTextNode(title+' '),sp)}else h.textContent=title}
+  function render2(list){
+    var d={};list.forEach(function(s){d[s.section_key]=s});window.__lingmeiData=d;
+    var cards=document.querySelectorAll('.row>.kpis:first-child>.kpi');
+    if(d.summary)(d.summary.rows||[]).forEach(function(r,i){if(!cards[i])return;var l=cards[i].querySelector('.kpi-label'),v=cards[i].querySelector('.kpi-val');if(l)l.textContent=r[0]||'';if(v)v.textContent=r[1]||''});
+    if(d.category){var cp=sectionPanel('品类结构');heading(cp,d.category.title);var ce=document.getElementById('catPie');if(ce&&typeof echarts!=='undefined'){var cc=echarts.getInstanceByDom(ce);var pal=['#e60012','#003688','#9fb3c8','#f5a623','#37a779','#7b61ff'];var cd=(d.category.rows||[]).filter(function(r){return r[0]!==''&&r[1]!==''}).map(function(r,i){return{name:r[0],value:parseFloat(String(r[1]).replace(/%|,/g,''))||0,itemStyle:{color:r[2]||pal[i%pal.length]}}});if(cc)cc.setOption({tooltip:{trigger:'item',formatter:function(q){return q.name+'<br>'+q.value+'%'}},legend:{bottom:0},series:[{type:'pie',radius:['48%','72%'],center:['50%','45%'],label:{show:true,formatter:function(q){return q.name+'\n'+q.value+'%'}},data:cd}]},true)}}
+    if(d.model_sales){var mp=sectionPanel('销售型号');heading(mp,d.model_sales.title);var me=document.getElementById('modelBar');if(me&&typeof echarts!=='undefined'){var mc=echarts.getInstanceByDom(me),mr=(d.model_sales.rows||[]).filter(function(r){return r[0]!==''&&r[1]!==''});if(mc)mc.setOption({xAxis:{type:'category',data:mr.map(function(r){return r[0]})},yAxis:{type:'value'},series:[{type:'bar',data:mr.map(function(r){return{value:Number(String(r[1]).replace(/,/g,''))||0,itemStyle:{color:r[2]||'#e60012'}}})}]},true)}}
+    if(d.platform){var pp=sectionPanel('平台诊断');heading(pp,d.platform.title);tableFill(pp&&pp.querySelector('table'),d.platform.columns,d.platform.rows)}
+    if(d.region){var rp=sectionPanel('销售热力图');heading(rp,d.region.title);tableFill(rp&&rp.querySelector('table'),d.region.columns,d.region.rows)}
+    if(typeof finalPolish==='function')finalPolish();
+  }
+  function load2(){fetch(API2,{headers:{apikey:KEY2,Authorization:'Bearer '+KEY2},cache:'no-store'}).then(function(r){return r.json()}).then(render2).catch(function(e){console.error(e)})}
+  setTimeout(load2,700);setInterval(load2,10000);document.addEventListener('visibilitychange',function(){if(!document.hidden)load2()});
+})();
+</script>
 </body></html>
