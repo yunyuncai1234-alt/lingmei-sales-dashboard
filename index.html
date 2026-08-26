@@ -528,6 +528,9 @@ function finalPolish(){
 setTimeout(finalPolish,50);setTimeout(finalPolish,1200);
 </script>
 <script>
+setTimeout(function(){if(typeof echarts==='undefined')return;var c=echarts.getInstanceByDom(document.getElementById('catPie'));if(c)c.setOption({series:[{type:'pie',radius:['48%','72%'],data:[{name:'F系列',value:93.28,itemStyle:{color:'#e60012'}},{name:'L系列',value:6.72,itemStyle:{color:'#003688'}}]}]},true);var m=echarts.getInstanceByDom(document.getElementById('modelBar'));if(m)m.setOption({xAxis:{type:'category',data:['F1','F2','F3','F4','F5','F6','F7','F8','F9']},yAxis:{type:'value'},series:[{type:'bar',data:[116,105,94,522,538,1710,1881,1484,16501],itemStyle:{color:'#e60012'}}]},true)},300);
+</script>
+<script>
 (function(){
   var API2='https://hafzjgbotovxqtcepnod.supabase.co/rest/v1/dashboard_sections?select=*&order=sort_order';
   var KEY2='sb_publishable_gXWhlDp6sWkNOeSOtwnhAg_dS9_Xrh0';
