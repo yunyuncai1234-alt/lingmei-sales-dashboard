@@ -494,7 +494,7 @@ function swPlat(p){
 <script>(function(){function s(){try{var a=JSON.parse(localStorage.getItem('lingmeiAdminData')||'{}')['汇总数据'];if(!a||!a.length)return;var k=document.querySelectorAll('.kpis>.kpi');a.slice(1).forEach(function(r){var i=['年累计销售额（万元）','销售数量（打）','年度目标完成率','去年同比变化'].indexOf((r[0]||'').trim());if(i>=0&&k[i]&&k[i].querySelector('.kpi-val'))k[i].querySelector('.kpi-val').textContent=(r[1]||'').trim();});}catch(e){}}s();window.addEventListener('storage',s);setInterval(s,1000);})();</script>
 <script>(function(){document.querySelectorAll('.data-import,#paste-admin').forEach(function(x){x.remove()});document.querySelectorAll('button').forEach(function(x){if((x.textContent||'').indexOf('数据后台')>=0)x.remove()});})();</script>
 <style>.data-import,#paste-admin{display:none!important}</style>
-<script>
+<script type="text/plain" id="obsolete-sync">
 (function(){var API='https://hafzjgbotovxqtcepnod.supabase.co/rest/v1/dashboard_sections?select=*&order=sort_order',KEY='sb_publishable_gXWhlDp6sWkNOeSOtwnhAg_dS9_Xrh0';
 function mk(t,c,rs){if(!t||!rs||!rs.length)return;t.innerHTML='<thead><tr>'+c.map(function(x){return'<th>'+String(x||'')+'</th>'}).join('')+'</tr></thead><tbody>'+rs.map(function(r){return'<tr>'+c.map(function(_,i){return'<td>'+String(r[i]||'')+'</td>'}).join('')+'</tr>'}).join('')+'</tbody>'}
 function panel(words){return[].slice.call(document.querySelectorAll('.panel')).find(function(p){var s=(p.querySelector('h2')||p).textContent||'';return words.some(function(w){return s.indexOf(w)>=0})})}
