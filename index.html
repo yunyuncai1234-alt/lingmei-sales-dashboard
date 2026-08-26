@@ -544,7 +544,7 @@ setTimeout(finalPolish,50);setTimeout(finalPolish,1200);
     if(d.region){var rp=sectionPanel('销售热力图');heading(rp,d.region.title);tableFill(rp&&rp.querySelector('table'),d.region.columns,d.region.rows)}
     if(typeof finalPolish==='function')finalPolish();
   }
-  function load2(){fetch(API2,{headers:{apikey:KEY2,Authorization:'Bearer '+KEY2},cache:'no-store'}).then(function(r){return r.json()}).then(render2).catch(function(e){console.error(e)})}
+  function load2(){window.__syncDebug={started:true,fetchType:typeof fetch};try{fetch(API2,{headers:{apikey:KEY2,Authorization:'Bearer '+KEY2},cache:'no-store'}).then(function(r){window.__syncDebug.status=r.status;return r.text()}).then(function(t){window.__syncDebug.preview=t.slice(0,160);return JSON.parse(t)}).then(render2).catch(function(e){window.__syncDebug.error=String(e);console.error(e)})}catch(e){window.__syncDebug.error=String(e);console.error(e)}}
   setTimeout(load2,700);setInterval(load2,10000);document.addEventListener('visibilitychange',function(){if(!document.hidden)load2()});
 })();
 </script>
