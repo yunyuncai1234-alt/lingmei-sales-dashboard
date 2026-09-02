@@ -51,7 +51,23 @@
     const db=supabase.createClient(LINGMEI_CONFIG.url,LINGMEI_CONFIG.key),$=id=>document.getElementById(id);
     let sections=[],current=null,dirty=false;
     const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-    function authView(ok){$('login').classList.toggle('hidden',ok);$('editor').classList.toggle('hidden',!ok);$('logout').classList.toggle('hidden',!ok);if(ok)loadSections()}
+    async function ensureFlowSchemas(){
+      const{data,error}=await db.from('dashboard_sections').select('*').order('sort_order');
+      if(error)throw error;
+      const defs={
+        region:{title:'整体地域流向',columns:['省份','成交打数','占比']},
+        f_flow:{title:'F系列流向',columns:['型号','TOP1','TOP2','TOP3','TOP4','TOP5']},
+        l_flow:{title:'L系列流向',columns:['型号','TOP1','TOP2','TOP3','TOP4','TOP5']}
+      };
+      for(const item of(data||[])){
+        const def=defs[item.section_key];if(!def)continue;
+        const old=(item.columns||[]).join('|');let rows=item.rows||[],needs=false;
+        if(item.section_key==='region'&&(old==='省份|成交打数（打）|销售金额（万元）'||old==='省份|成交打数|销售金额')){rows=rows.map(r=>[r?.[0]||'',r?.[1]||'',r?.[2]||'']);needs=true}
+        if((item.section_key==='f_flow'||item.section_key==='l_flow')&&(old==='型号|省份|成交打数（打）'||old==='型号|省份|成交打数')){rows=[];needs=true}
+        if(needs||item.title!==def.title)await db.from('dashboard_sections').update({title:def.title,columns:needs?def.columns:item.columns,rows}).eq('id',item.id);
+      }
+    }
+    function authView(ok){$('login').classList.toggle('hidden',ok);$('editor').classList.toggle('hidden',!ok);$('logout').classList.toggle('hidden',!ok);if(ok)ensureFlowSchemas().then(()=>loadSections()).catch(e=>{setStatus(e.message,true);loadSections()})}
     db.auth.getSession().then(({data})=>authView(!!data.session));
     $('signIn').onclick=async()=>{const{error}=await db.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value});$('loginMsg').textContent=error?error.message:'';if(!error)authView(true)};
     $('signUp').onclick=async()=>{const{error}=await db.auth.signUp({email:$('email').value.trim(),password:$('password').value});$('loginMsg').textContent=error?error.message:'账号已创建。若系统要求验证，请先查看邮箱，然后回来登录。'};
