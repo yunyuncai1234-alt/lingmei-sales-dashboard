@@ -35,6 +35,7 @@
           <div class="editor-head"><label for="title"><b>板块标题：</b></label><input id="title" placeholder="板块标题"><span id="status" class="status"></span></div>
           <div class="paste-tip"><b>一键粘贴：</b>在 Excel 中复制整块表格（包含表头），回到这里点击第一个单元格后按 <b>Ctrl+V</b>。后台会自动扩展行和列。</div>
           <div class="toolbar">
+            <button id="importExcel">导入整份 Excel</button><button id="exportExcel" class="secondary">下载当前数据表</button><input id="excelFile" type="file" accept=".xlsx,.xls" class="hidden">
             <button id="addRow">＋ 增加一行</button><button id="addCol">＋ 增加一列</button>
             <button id="delRow" class="secondary">删除最后一行</button><button id="delCol" class="secondary">删除最后一列</button>
             <button id="selectAll" class="secondary">全选数据</button><button id="deleteSelected" class="danger">删除所选数据</button>
@@ -48,6 +49,7 @@
   </main>
   <script src="config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
   <script>
     const db=supabase.createClient(LINGMEI_CONFIG.url,LINGMEI_CONFIG.key),$=id=>document.getElementById(id);
     let sections=[],current=null,dirty=false;
@@ -97,6 +99,31 @@
     $('grid').addEventListener('focusout',e=>{const cell=e.target.closest('td');if(!cell)return;const t=table(),name=t?.tHead.rows[0].cells[cell.cellIndex]?.textContent;if(isPercentColumn(name))cell.textContent=percentValue(cell.textContent)});
     function readGrid(){const t=table();if(!t)return{columns:[],rows:[]};const columns=[...t.tHead.rows[0].cells].map(c=>c.textContent.trim());return{columns,rows:[...t.tBodies[0].rows].map(r=>[...r.cells].map((c,i)=>isPercentColumn(columns[i])?percentValue(c.textContent):c.textContent.trim()))}}
     $('save').onclick=async()=>{if(!current)return;const g=readGrid(),payload={title:$('title').value.trim()||current.title,columns:g.columns,rows:g.rows,updated_at:new Date().toISOString()};setStatus('正在保存…');const{error}=await db.from('dashboard_sections').update(payload).eq('id',current.id);if(error){setStatus(error.message,true);return}Object.assign(current,payload);dirty=false;drawSections();drawGrid();setStatus('保存成功，BI 看板正在同步')};
+    $('importExcel').onclick=()=>$('excelFile').click();
+    $('excelFile').onchange=async e=>{
+      const file=e.target.files?.[0];if(!file)return;
+      try{
+        setStatus('正在读取 Excel…');
+        const wb=XLSX.read(await file.arrayBuffer(),{type:'array'}),updates=[],skipped=[];
+        wb.SheetNames.forEach(name=>{
+          const matrix=XLSX.utils.sheet_to_json(wb.Sheets[name],{header:1,defval:'',raw:false}).filter(r=>r.some(v=>String(v).trim()!==''));
+          if(matrix.length<2){skipped.push(name);return}
+          const target=sections.find(s=>s.section_key===name||s.title===name||name.startsWith(s.section_key+'_'));
+          if(!target){skipped.push(name);return}
+          const columns=matrix[0].map(v=>String(v).trim()),rows=matrix.slice(1).map(r=>columns.map((c,i)=>isPercentColumn(c)?percentValue(r[i]):String(r[i]??'').trim()));
+          updates.push({target,columns,rows});
+        });
+        if(!updates.length)throw new Error('没有找到可匹配的工作表。Sheet 名请使用后台显示的英文 key，例如 summary、monthly、platform。');
+        if(!confirm('将用 Excel 中的 '+updates.length+' 个工作表覆盖对应板块并同步到公开看板，是否继续？'))return;
+        for(const u of updates){const{error}=await db.from('dashboard_sections').update({columns:u.columns,rows:u.rows,updated_at:new Date().toISOString()}).eq('id',u.target.id);if(error)throw error}
+        await loadSections(current?.id);setStatus('Excel 导入成功：已同步 '+updates.length+' 个板块'+(skipped.length?'；跳过 '+skipped.join('、'):'') );
+      }catch(err){setStatus(err.message||String(err),true)}finally{e.target.value=''}
+    };
+    $('exportExcel').onclick=()=>{
+      const wb=XLSX.utils.book_new();
+      sections.forEach(s=>{const rows=[s.columns||[],...(s.rows||[])],ws=XLSX.utils.aoa_to_sheet(rows);XLSX.utils.book_append_sheet(wb,ws,String(s.section_key||'data').slice(0,31))});
+      XLSX.writeFile(wb,'翎美BI数据模板.xlsx');
+    };
     $('addSection').onclick=async()=>{const name=prompt('请输入新板块名称');if(!name)return;const payload={section_key:'custom_'+Date.now(),title:name,display_type:'table',columns:['表头1','表头2'],rows:[['','']],sort_order:(sections.at(-1)?.sort_order||0)+10};const{data,error}=await db.from('dashboard_sections').insert(payload).select().single();if(error)setStatus(error.message,true);else loadSections(data.id)};
     window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue=''}});
   </script>

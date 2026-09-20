@@ -1,0 +1,30 @@
+(function(){
+  'use strict';
+  var API=(window.LINGMEI_CONFIG&&LINGMEI_CONFIG.url||'https://hafzjgbotovxqtcepnod.supabase.co')+'/rest/v1/dashboard_sections?select=*&order=sort_order';
+  var KEY=window.LINGMEI_CONFIG&&LINGMEI_CONFIG.key||'sb_publishable_gXWhlDp6sWkNOeSOtwnhAg_dS9_Xrh0';
+  var lastPayload='';
+  function num(v){var n=parseFloat(String(v==null?'':v).replace(/[%％,，万打箱元\s]/g,''));return Number.isFinite(n)?n:0}
+  function panel(words){return Array.from(document.querySelectorAll('.panel')).find(function(p){var h=p.querySelector('h2,h3');return h&&words.some(function(w){return h.textContent.indexOf(w)>=0})})}
+  function title(p,s){if(!p||!s||!s.title)return;var h=p.querySelector('h2,h3'),sp=h&&h.querySelector('span');if(!h)return;if(sp){Array.from(h.childNodes).filter(function(n){return n!==sp}).forEach(function(n){n.remove()});h.insertBefore(document.createTextNode(s.title+' '),sp)}else h.textContent=s.title}
+  function fill(table,cols,rows){if(!table)return;table.textContent='';var thead=table.createTHead(),hr=thead.insertRow();(cols||[]).forEach(function(c){var th=document.createElement('th');th.textContent=c==null?'':c;hr.appendChild(th)});var tb=table.createTBody();(rows||[]).forEach(function(row){var tr=tb.insertRow();(cols||[]).forEach(function(_,i){tr.insertCell().textContent=row&&row[i]!=null?row[i]:''})})}
+  function chart(id){var el=document.getElementById(id);return el&&window.echarts?echarts.getInstanceByDom(el):null}
+  function render(list){
+    var d={};(list||[]).forEach(function(s){d[s.section_key]=s});window.__lingmeiData=d;
+    var cards=document.querySelectorAll('.row>.kpis:first-child>.kpi');
+    if(d.summary)(d.summary.rows||[]).forEach(function(r,i){if(!cards[i])return;var l=cards[i].querySelector('.kpi-label'),v=cards[i].querySelector('.kpi-val');if(l)l.textContent=r[0]||'';if(v)v.textContent=r[1]||''});
+    if(d.category){var cp=panel(['品类结构']);title(cp,d.category);var cc=chart('catPie'),pal=['#e60012','#003688','#9fb3c8','#f5a623','#37a779','#7b61ff'];if(cc)cc.setOption({series:[{data:(d.category.rows||[]).filter(function(r){return r[0]!==''&&r[1]!==''}).map(function(r,i){return{name:r[0],value:num(r[1]),itemStyle:{color:r[2]||pal[i%pal.length]}}})}]},false)}
+    if(d.model_sales){var mp=panel(['销售型号']);title(mp,d.model_sales);var mc=chart('modelBar'),mr=(d.model_sales.rows||[]).filter(function(r){return r[0]!==''});if(mc)mc.setOption({xAxis:{data:mr.map(function(r){return r[0]})},series:[{data:mr.map(function(r){return{value:num(r[1]),itemStyle:{color:r[2]||'#e60012'}}})}]},false)}
+    if(d.platform){var pp=panel(['平台诊断']);title(pp,d.platform);fill(pp&&pp.querySelector('table'),d.platform.columns,d.platform.rows)}
+    if(d.monthly){var mpp=panel(['分月数据']);title(mpp,d.monthly);var pi=(d.monthly.columns||[]).indexOf('平台');mpp&&mpp.querySelectorAll('.mtab').forEach(function(t){var name=(t.id||'').replace('mtab-',''),cols=(d.monthly.columns||[]).slice(),rows=(d.monthly.rows||[]).filter(function(r){return pi<0||r[pi]===name}).map(function(r){return r.slice()});if(pi>=0){cols.splice(pi,1);rows.forEach(function(r){r.splice(pi,1)})}fill(t.querySelector('table'),cols,rows)})}
+    [['f_growth','growthF'],['l_growth','growthL']].forEach(function(pair){var s=d[pair[0]],c=chart(pair[1]);if(!s||!c)return;var rows=s.rows||[],cols=s.columns||[],mi=Math.max(0,cols.findIndex(function(x){return /型号/.test(x)})),i26=cols.findIndex(function(x){return /2026|本年/.test(x)}),i25=cols.findIndex(function(x){return /2025|去年/.test(x)});if(i26<0)i26=1;if(i25<0)i25=2;c.setOption({xAxis:{data:rows.map(function(r){return r[mi]})},series:[{name:'2026（本年）',data:rows.map(function(r){return num(r[i26])})},{name:'2025（去年）',data:rows.map(function(r){return num(r[i25])})}]},false)});
+    [['f_flow','F系列'],['l_flow','L系列']].forEach(function(pair){var s=d[pair[0]];if(!s)return;var h=Array.from(document.querySelectorAll('.flow-split h3')).find(function(x){return x.textContent.indexOf(pair[1])>=0});if(h){h.textContent=s.title||pair[1];fill(h.parentElement.querySelector('table'),s.columns,s.rows)}});
+    if(d.region){var rp=panel(['销售热力图','整体地域流向']);title(rp,d.region);fill(rp&&rp.querySelector('table'),d.region.columns,d.region.rows);var gc=chart('geoMap');if(gc)gc.setOption({series:[{data:(d.region.rows||[]).map(function(r){return{name:String(r[0]||'').replace(/省$|市$|自治区$/,''),value:num(r[1])}})}]},false)}
+    if(d.ads_overview){var ap=panel(['2026年投流情况总览']);title(ap,d.ads_overview);var annual=ap&&ap.querySelector('.annual-ads table');fill(annual,d.ads_overview.columns,d.ads_overview.rows);var core=ap&&ap.querySelectorAll('.core-ads .kpi-val'),rows=d.ads_overview.rows||[],last=rows.length?rows[rows.length-1]:[];(core||[]).forEach(function(v,i){v.textContent=last[i+1]||'--'})}
+    if(d.ads_month){var amp=panel(['2026年投流情况总览']),vals=amp&&amp.querySelectorAll('.month-editor + .kpis .kpi-val'),r=(d.ads_month.rows||[])[0]||[];(vals||[]).forEach(function(v,i){v.textContent=r[i+1]||r[i]||'--'})}
+    if(d.ads_platform){var cols=d.ads_platform.columns||[],pidx=cols.indexOf('平台');['天猫','京东','拼多多','抖音'].forEach(function(name){var sub=Array.from(document.querySelectorAll('.panel.sub')).find(function(x){var h=x.querySelector('h2');return h&&h.textContent.indexOf(name)>=0});if(!sub)return;var rows=(d.ads_platform.rows||[]).filter(function(r){return pidx<0||r[pidx]===name}).map(function(r){var a=r.slice();if(pidx>=0)a.splice(pidx,1);return a}),out=cols.slice();if(pidx>=0)out.splice(pidx,1);fill(sub.querySelectorAll('table')[sub.querySelectorAll('table').length-1],out,rows)})}
+    if(typeof window.finalPolish==='function')window.finalPolish();
+    window.__lingmeiLastSync=new Date().toISOString();
+  }
+  async function load(){try{var r=await fetch(API,{headers:{apikey:KEY,Authorization:'Bearer '+KEY},cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);var text=await r.text();if(text!==lastPayload){lastPayload=text;render(JSON.parse(text))}}catch(e){console.error('BI data sync failed',e)}}
+  setTimeout(load,900);setInterval(load,10000);document.addEventListener('visibilitychange',function(){if(!document.hidden)load()});
+})();
